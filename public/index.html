@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flavor Table🔥</title>
+
+  <link rel="stylesheet" href="./styles.css">
+
+  
+</head>
+
+
+<header>
+
+<a href="index.html">🏡Home</a>
+<a href="randomRecipes.html">🥣Random Recipes</a>    
+<a href="favorites.html">⭐Favorites</a>
+
+</header>
+ 
+<main>
+
+<h1>Find Recipes by Ingredients</h1>
+
+<div class="search-container">
+  <input type="text" id="ingredients-input" placeholder="🔎 Enter ingredients (Rice, Chicken...)">
+  <button id="search-btn">Search</button>
+</div>
+
+<div id="search-results"></div>
+
+<script>
+  document.getElementById("search-btn").addEventListener("click", async () => {
+    const ingredients = document.getElementById("ingredients-input").value.trim();
+    const resultsDiv = document.getElementById("search-results");
+
+    if (!ingredients) {
+      resultsDiv.innerHTML = "<p>Please enter at least one ingredient.</p>";
+      return;
+    }
+
+    resultsDiv.innerHTML = "<p>Loading recipes...</p>";
+
+    try {
+      const response = await fetch(`/api/search?ingredients=${ingredients}`);
+      const recipes = await response.json();
+
+      if (response.ok && recipes.length > 0) {
+        resultsDiv.innerHTML = ""; // clear old results
+
+        recipes.forEach(recipe => {
+          const card = document.createElement("div");
+          card.classList.add("recipe-card");
+
+          card.innerHTML = `
+            <h2>${recipe.title}</h2>
+            <img src="${recipe.image}" alt="${recipe.title}" style="max-width:200px;">
+            <p><strong>Used Ingredients:</strong> ${recipe.usedIngredients.join(", ")}</p>
+            <p><strong>Missed Ingredients:</strong> ${recipe.missedIngredients.join(", ")}</p>
+            <button class="save-btn">⭐Add to Favorites</button>
+            <hr>
+          `;
+
+          // attach save button event
+          card.querySelector(".save-btn").addEventListener("click", () => {
+            saveToFavorites(recipe);
+          });
+
+          resultsDiv.appendChild(card);
+        });
+
+      } else {
+        resultsDiv.innerHTML = "<p>No recipes found.</p>";
+      }
+    } catch (error) {
+      console.error("Error fetching recipes:", error);
+      resultsDiv.innerHTML = "<p>Failed to fetch recipes.</p>";
+    }
+  });
+
+  // Save recipe to localStorage
+function saveToFavorites(recipe) {
+  let favorites = JSON.parse(localStorage.getItem("favorites")) || [];
+
+  // If recipe has an ID, use it to avoid duplicates
+  if (recipe.id) {
+    if (!favorites.some(r => r.id === recipe.id)) {
+      favorites.push(recipe);
+      localStorage.setItem("favorites", JSON.stringify(favorites));
+      alert("Recipe added to favorites!");
+    } else {
+      alert("Recipe already in favorites!");
+    }
+  } else {
+    // If recipe has no ID, just push (may allow duplicates)
+    favorites.push(recipe);
+    localStorage.setItem("favorites", JSON.stringify(favorites));
+    alert("Recipe added to favorites!");
+  }
+}
+
+</script>
+
+
+
+
+
+
+
+<body>
+
+    <footer>
+  ©️Niveen Abu-Sall - 2025
+  </footer>
+
+</body>
+</html>
+<script src="app.js"></script>

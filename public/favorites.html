@@ -1,0 +1,83 @@
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Favorites⭐</title>
+
+    <link rel="stylesheet" href="./styles.css">
+
+</head>
+
+<header>
+
+<a href="index.html">🏡Home</a>
+<a href="randomRecipes.html">🥣Random Recipes</a>    
+<a href="favorites.html">⭐Favorites</a>
+
+
+</header>
+
+<body>
+ <h1>My Favorite Recipes</h1>
+     <div id="favorites-list"></div>
+
+  <main>
+
+<script>
+function loadFavorites() {
+  const container = document.getElementById("favorites-list"); // use your ID
+  let favorites = JSON.parse(localStorage.getItem("favorites")) || [];
+
+  container.innerHTML = "";
+
+  if (favorites.length === 0) {
+    container.innerHTML = "<p>No favorites yet!</p>";
+    return;
+  }
+
+  favorites.forEach((recipe, index) => {
+    const card = document.createElement("div");
+    card.classList.add("recipe-card");
+
+    card.innerHTML = `
+      <h3>${recipe.title}</h3>
+      <img src="${recipe.image}" alt="${recipe.title}" width="200">
+      <button class="remove-btn" data-index="${index}">⛔ Remove</button>
+    `;
+
+    // Remove button functionality
+    card.querySelector(".remove-btn").addEventListener("click", () => {
+      removeFavorite(index);
+    });
+
+    container.appendChild(card);
+  });
+}
+
+function removeFavorite(index) {
+  let favorites = JSON.parse(localStorage.getItem("favorites")) || [];
+  favorites.splice(index, 1);
+  localStorage.setItem("favorites", JSON.stringify(favorites));
+  loadFavorites(); // reload after removing
+}
+
+document.addEventListener("DOMContentLoaded", loadFavorites);
+
+</script>
+
+
+  </main>
+  
+
+
+            
+</body>
+    
+    <footer>
+  ©️Niveen Abu-Sall - 2025
+  </footer>
+</html>
+
+
+<script src="app.js"
