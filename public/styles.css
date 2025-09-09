@@ -336,7 +336,7 @@ h1 {
    /*add to favotites btn from index page*/
   /* Shared button styles */
 button.save-btn,
-button.remove-btn {
+button.remove-btn, button.update-btn {
   padding: 10px 20px;
   border-radius: 25px;
   font-size: 1rem;
@@ -367,3 +367,11 @@ button.remove-btn:hover {
   transform: scale(1.55);
 }
 
+button.update-btn {
+color: #ffffff;
+}
+
+button.update-btn:hover {
+  background-color: rgba(0, 123, 255, 0.5);
+  transform: scale(1.55);
+}

@@ -16,16 +16,26 @@
 <a href="favorites.html">⭐Favorites</a>
 
 
+
 </header>
 
-<body>
+<body onload="loadFavorites()">
  <h1>My Favorite Recipes</h1>
      <div id="favorites-list"></div>
+     <div id="favorites-container"></div>
+      <div id="recipesContainer"></div>
+
+
 
   <main>
 
+
+
 <script>
-function loadFavorites() {
+            
+/*// Initial call to load favorites
+loadFavorites();
+  /*function loadFavorites() {
   const container = document.getElementById("favorites-list"); // use your ID
   let favorites = JSON.parse(localStorage.getItem("favorites")) || [];
 
@@ -62,15 +72,12 @@ function removeFavorite(index) {
   loadFavorites(); // reload after removing
 }
 
-document.addEventListener("DOMContentLoaded", loadFavorites);
+document.addEventListener("DOMContentLoaded", loadFavorites);*/
 
 </script>
 
-
   </main>
   
-
-
             
 </body>
     
@@ -79,5 +86,4 @@ document.addEventListener("DOMContentLoaded", loadFavorites);
   </footer>
 </html>
 
-
-<script src="app.js"
+<script src="app.js"></script>
