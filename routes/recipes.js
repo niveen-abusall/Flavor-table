@@ -1,6 +1,8 @@
 const express = require("express");
 const axios = require("axios");
 const router = express.Router();
+const { Pool } = require('pg');
+
 
 const API_KEY = process.env.SPOONACULAR_API_KEY;
 
@@ -58,7 +60,7 @@ router.get("/search", async (req, res) => {
         ingredients: ingredientsQuery, // Pass the query directly to Spoonacular
         number: 5, // You can adjust how many results you want to fetch
         ranking: 1, // Maximize used ingredients
-        ignorePantry: false, // Don't ignore typical pantry items in the ingredient search
+        ignorePantry: false, 
         apiKey: API_KEY
       }
     });
@@ -89,6 +91,85 @@ router.get("/search", async (req, res) => {
 });
 
 
+// PostgreSQL connection pool
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
 
+/* ------------------- FAVORITES ROUTES ------------------- */
+
+// 📌 Get all favorites (from DB)
+router.get('/recipes', async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM recipes ORDER BY id ASC");
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 📌 Add recipe to favorites
+router.post('/recipes', async (req, res) => {
+  try {
+    const { title, image, instructions, ingredients, readyIn } = req.body;
+
+    const result = await pool.query(
+      `INSERT INTO recipes (title, image, instructions, ingredients, readyIn)
+       VALUES ($1, $2, $3, $4::jsonb, $5)
+       RETURNING *`,
+      [title, image, instructions, JSON.stringify(ingredients), readyIn]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 📌 Remove recipe from favorites
+router.delete('/recipes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      "DELETE FROM recipes WHERE id = $1 RETURNING *",
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Recipe not found" });
+    }
+
+    res.json({ message: "Recipe removed from favorites" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update recipe by ID
+router.put('/recipes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, instructions, ingredients, image } = req.body;
+
+    const result = await pool.query(
+      `UPDATE recipes 
+       SET title = $1, instructions = $2, ingredients = $3, image = $4 
+       WHERE id = $5 RETURNING *`,
+      [title, instructions, ingredients, image, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Recipe not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("Error updating recipe:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
 
 module.exports = router;
+
+
+

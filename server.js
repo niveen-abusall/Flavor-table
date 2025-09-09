@@ -7,17 +7,19 @@ const path = require('path');
 
 const app = express();
 
+// Middleware
+app.use(cors());
+app.use(express.json()); 
+app.use(express.static("public"));
+
+// Routes
 const homeRoutes = require("./routes/home");
 const recipesRoutes = require("./routes/recipes");
 
-app.use(cors());
-app.use(express.static("public"));
-
-// Mount routes
 app.use("/home", homeRoutes);
 app.use("/api", recipesRoutes);
 
-// Direct endpoint for random recipe
+// Direct endpoint for random recipe (Spoonacular API)
 app.get('/api/random-recipe', async (req, res) => {
   const apiKey = process.env.SPOONACULAR_API_KEY;
 
@@ -43,6 +45,7 @@ app.get('/api/random-recipe', async (req, res) => {
         image: recipe.image,
         instructions: recipe.instructions || 'No instructions available.',
         ingredients: recipe.extendedIngredients ? recipe.extendedIngredients.map(ing => ing.original) : [],
+        readyIn: recipe.readyInMinutes || 30
       };
       res.json(simplifiedRecipe);
     } else {
@@ -54,8 +57,7 @@ app.get('/api/random-recipe', async (req, res) => {
   }
 });
 
-
-
+// Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`App is listening on http://localhost:${PORT}`);

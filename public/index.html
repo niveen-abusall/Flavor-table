@@ -17,6 +17,7 @@
 <a href="randomRecipes.html">🥣Random Recipes</a>    
 <a href="favorites.html">⭐Favorites</a>
 
+
 </header>
  
 <main>
@@ -31,55 +32,84 @@
 <div id="search-results"></div>
 
 <script>
-  document.getElementById("search-btn").addEventListener("click", async () => {
-    const ingredients = document.getElementById("ingredients-input").value.trim();
-    const resultsDiv = document.getElementById("search-results");
+ document.getElementById("search-btn").addEventListener("click", async () => {
+  const ingredients = document.getElementById("ingredients-input").value.trim();
+  const resultsDiv = document.getElementById("search-results");
 
-    if (!ingredients) {
-      resultsDiv.innerHTML = "<p>Please enter at least one ingredient.</p>";
-      return;
-    }
+  if (!ingredients) {
+    resultsDiv.innerHTML = "<p>Please enter at least one ingredient.</p>";
+    return;
+  }
 
-    resultsDiv.innerHTML = "<p>Loading recipes...</p>";
+  resultsDiv.innerHTML = "<p>Loading recipes...</p>";
 
-    try {
-      const response = await fetch(`/api/search?ingredients=${ingredients}`);
-      const recipes = await response.json();
+  try {
+    const response = await fetch(`/api/search?ingredients=${ingredients}`);
+    const recipes = await response.json();
 
-      if (response.ok && recipes.length > 0) {
-        resultsDiv.innerHTML = ""; // clear old results
+    if (response.ok && recipes.length > 0) {
+      resultsDiv.innerHTML = ""; // clear old results
 
-        recipes.forEach(recipe => {
-          const card = document.createElement("div");
-          card.classList.add("recipe-card");
+      recipes.forEach(recipe => {
+        const card = document.createElement("div");
+        card.classList.add("recipe-card");
 
-          card.innerHTML = `
-            <h2>${recipe.title}</h2>
-            <img src="${recipe.image}" alt="${recipe.title}" style="max-width:200px;">
-            <p><strong>Used Ingredients:</strong> ${recipe.usedIngredients.join(", ")}</p>
-            <p><strong>Missed Ingredients:</strong> ${recipe.missedIngredients.join(", ")}</p>
-            <button class="save-btn">⭐Add to Favorites</button>
-            <hr>
-          `;
+        card.innerHTML = `
+          <h2>${recipe.title}</h2>
+          <img src="${recipe.image}" alt="${recipe.title}" style="max-width:200px;">
+          <p><strong>Used Ingredients:</strong> ${recipe.usedIngredients.map(i => i.original || i.name).join(", ")}</p>
+          <p><strong>Missed Ingredients:</strong> ${recipe.missedIngredients.map(i => i.original || i.name).join(", ")}</p>
+          <button class="save-btn">⭐ Add to Favorites</button>
+          <hr>
+        `;
 
-          // attach save button event
-          card.querySelector(".save-btn").addEventListener("click", () => {
-            saveToFavorites(recipe);
-          });
-
-          resultsDiv.appendChild(card);
+        // attach save button event
+        card.querySelector(".save-btn").addEventListener("click", () => {
+          const recipeData = {
+            title: recipe.title,
+            image: recipe.image,
+            instructions: recipe.instructions || "No instructions available",
+            ingredients: [
+              ...(recipe.usedIngredients ? recipe.usedIngredients.map(ing => ing.original || ing.name) : []),
+              ...(recipe.missedIngredients ? recipe.missedIngredients.map(ing => ing.original || ing.name) : [])
+            ],
+            readyIn: recipe.readyInMinutes || 30
+          };
+          addToFavorites(recipeData);
         });
 
-      } else {
-        resultsDiv.innerHTML = "<p>No recipes found.</p>";
-      }
-    } catch (error) {
-      console.error("Error fetching recipes:", error);
-      resultsDiv.innerHTML = "<p>Failed to fetch recipes.</p>";
-    }
-  });
+        resultsDiv.appendChild(card);
+      });
 
-  // Save recipe to localStorage
+    } else {
+      resultsDiv.innerHTML = "<p>No recipes found.</p>";
+    }
+  } catch (error) {
+    console.error("Error fetching recipes:", error);
+    resultsDiv.innerHTML = "<p>Failed to fetch recipes.</p>";
+  }
+});
+
+// Add recipe to favorites (POST to backend → Postgres)
+async function addToFavorites(recipe) {
+  try {
+    const response = await fetch("http://localhost:3000/api/recipes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(recipe)
+    });
+
+    if (response.ok) {
+      alert("✅ Recipe added to favorites!");
+    } else {
+      alert("❌ Failed to add recipe.");
+    }
+  } catch (err) {
+    console.error("Error adding to favorites:", err);
+  }
+}
+
+  /*// Save recipe to localStorage
 function saveToFavorites(recipe) {
   let favorites = JSON.parse(localStorage.getItem("favorites")) || [];
 
@@ -98,7 +128,7 @@ function saveToFavorites(recipe) {
     localStorage.setItem("favorites", JSON.stringify(favorites));
     alert("Recipe added to favorites!");
   }
-}
+}*/
 
 </script>
 
