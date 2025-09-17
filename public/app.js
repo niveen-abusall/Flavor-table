@@ -81,6 +81,9 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });*/
 
+
+// ------------------- Favorites CRUD -------------------
+
 // Add recipe to favorites
 async function addToFavorites(recipe) {
   try {
@@ -91,6 +94,7 @@ async function addToFavorites(recipe) {
     });
     if (response.ok) {
       alert("✅ Recipe added to favorites!");
+      loadFavorites();
     }
   } catch (err) {
     console.error("Error adding to favorites:", err);
@@ -103,7 +107,6 @@ async function removeFavorite(id) {
     const response = await fetch(`http://localhost:3000/api/recipes/${id}`, {
       method: "DELETE",
     });
-
     if (response.ok) {
       document.querySelector(`.recipe-card[data-id="${id}"]`)?.remove();
     } else {
@@ -122,19 +125,16 @@ async function updateFavorite(id, updatedData) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updatedData),
     });
-
-    if (response.ok) {
-      alert("✏️ Recipe updated successfully!");
-      loadFavorites(); // reload list to show updated recipe
-    } else {
-      console.error("Failed to update recipe");
-    }
+    if (!response.ok) throw new Error("Failed to update recipe");
+    return await response.json();
   } catch (err) {
     console.error("Error updating recipe:", err);
+    throw err;
   }
 }
 
-// Load favorites and render them
+// ------------------- Load Favorites -------------------
+
 async function loadFavorites() {
   try {
     const response = await fetch("http://localhost:3000/api/recipes");
@@ -143,7 +143,7 @@ async function loadFavorites() {
     const container = document.getElementById("favorites-container");
     container.innerHTML = "";
 
-    if (favorites.length === 0) {
+    if (!favorites || favorites.length === 0) {
       container.innerHTML = "<p>No favorites yet.</p>";
       return;
     }
@@ -154,36 +154,18 @@ async function loadFavorites() {
       card.setAttribute("data-id", recipe.id);
 
       card.innerHTML = `
-        <h3>${recipe.title}</h3>
-        <img src="${recipe.image}" alt="${recipe.title}" />
-        <p>${recipe.instructions || "No instructions available"}</p>
-        <p><strong>Ingredients:</strong> ${(recipe.ingredients || []).join(", ")}</p>
-        <button class="remove-btn">⛔ Remove</button>
+        ${recipe.image ? `<img src="${recipe.image}" alt="${recipe.title}" class="recipe-image">` : ""}
+        <h3 class="recipe-title">${recipe.title}</h3>
+        <p class="recipe-ingredients"><strong>Ingredients:</strong> ${(recipe.ingredients || []).join(", ")}</p>
         <button class="update-btn">✏️ Update</button>
+        <button class="remove-btn">⛔ Remove</button>
       `;
 
-      // Hook remove button
-      const removeBtn = card.querySelector(".remove-btn");
-      removeBtn.addEventListener("click", () => removeFavorite(recipe.id));
+      // Remove button
+      card.querySelector(".remove-btn").addEventListener("click", () => removeFavorite(recipe.id));
 
-      // Hook update button
-      const updateBtn = card.querySelector(".update-btn");
-      updateBtn.addEventListener("click", () => {
-        const newTitle = prompt("Enter new title:", recipe.title);
-        const newInstructions = prompt("Enter new instructions:", recipe.instructions);
-        const newIngredients = prompt("Enter ingredients (comma-separated):", recipe.ingredients?.join(", "));
-
-        if (newTitle || newInstructions || newIngredients) {
-          const updatedData = {
-            title: newTitle || recipe.title,
-            instructions: newInstructions || recipe.instructions,
-            ingredients: newIngredients ? newIngredients.split(",").map(i => i.trim()) : recipe.ingredients,
-            image: recipe.image, 
-          };
-
-          updateFavorite(recipe.id, updatedData);
-        }
-      });
+      // Update button opens modal
+      card.querySelector(".update-btn").addEventListener("click", () => openUpdateForm(recipe, card));
 
       container.appendChild(card);
     });
@@ -191,3 +173,65 @@ async function loadFavorites() {
     console.error("Error loading favorites:", err);
   }
 }
+
+// ------------------- Modal Update Form -------------------
+
+const updateForm = document.getElementById("updateForm");
+const updateRecipeForm = document.getElementById("updateRecipeForm");
+const updateTitle = document.getElementById("updateTitle");
+
+const cancelUpdate = document.getElementById("cancelUpdate");
+
+let currentRecipeId = null;
+let currentCard = null;
+
+// Open modal with current recipe
+function openUpdateForm(recipe, card) {
+  currentRecipeId = recipe.id;
+  currentCard = card;
+  updateTitle.value = recipe.title;
+
+  updateForm.style.display = "flex"; // show modal
+}
+
+// Close modal
+function closeUpdateModal() {
+  updateForm.style.display = "none";
+  currentRecipeId = null;
+  currentCard = null;
+}
+
+cancelUpdate.addEventListener("click", closeUpdateModal);
+window.addEventListener("click", (e) => {
+  if (e.target === updateForm) closeUpdateModal();
+});
+
+// Submit updated recipe
+updateRecipeForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!currentRecipeId) return;
+
+  const updatedData = {
+    title: updateTitle.value,
+ 
+    
+  };
+
+  try {
+    const updatedRecipe = await updateFavorite(currentRecipeId, updatedData);
+    alert("✅ Recipe updated!");
+
+    // Update card DOM
+    currentCard.querySelector(".recipe-title").textContent = updatedRecipe.title;
+   
+  } catch (err) {
+    alert("❌ Error updating recipe");
+  }
+
+  closeUpdateModal();
+});
+
+// ------------------- Initial Load -------------------
+
+loadFavorites();
+

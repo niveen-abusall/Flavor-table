@@ -3,31 +3,28 @@ const axios = require("axios");
 const router = express.Router();
 const { Pool } = require('pg');
 
-
 const API_KEY = process.env.SPOONACULAR_API_KEY;
 
-// Random recipe endpoint
+// -------------------- RANDOM RECIPE --------------------
 router.get("/recipes/random", async (req, res) => {
   try {
-    // Step 1: Get one random recipe from complexSearch
     const searchRes = await axios.get(
       `https://api.spoonacular.com/recipes/complexSearch?apiKey=${API_KEY}&number=1&sort=random`
     );
 
     const recipeId = searchRes.data.results[0].id;
 
-    // Step 2: Get detailed recipe info
     const detailRes = await axios.get(
       `https://api.spoonacular.com/recipes/${recipeId}/information?apiKey=${API_KEY}`
     );
 
     const recipe = detailRes.data;
 
-    // Step 3: Simplify response
     const simplifiedRecipe = {
       title: recipe.title,
       image: recipe.image,
-      instructions: recipe.instructions,
+      instructions: recipe.instructions || "No instructions available",
+      readyIn: recipe.readyInMinutes || null,
       ingredients: recipe.extendedIngredients.map(ing => ing.original)
     };
 
@@ -38,68 +35,80 @@ router.get("/recipes/random", async (req, res) => {
   }
 });
 
-
-
-
-
-
-// GET /recipes/search - Searches recipes by ingredients and returns JSON
-
+// -------------------- SEARCH BY INGREDIENTS --------------------
 router.get("/search", async (req, res) => {
-  const ingredientsQuery = req.query.ingredients; // Get comma-separated ingredients from URL query
+  const ingredientsQuery = req.query.ingredients;
 
   if (!ingredientsQuery) {
-    return res.status(400).json({ error: "Missing 'ingredients' query parameter (e.g., ?ingredients=apple,sugar)." });
+    return res.status(400).json({
+      error: "Missing 'ingredients' query parameter (e.g., ?ingredients=apple,sugar)."
+    });
   }
 
-  const apiUrl = "https://api.spoonacular.com/recipes/findByIngredients";
-
   try {
-    const response = await axios.get(apiUrl, {
+    // Step 1: Search recipes by ingredients
+    const response = await axios.get("https://api.spoonacular.com/recipes/findByIngredients", {
       params: {
-        ingredients: ingredientsQuery, // Pass the query directly to Spoonacular
-        number: 5, // You can adjust how many results you want to fetch
-        ranking: 1, // Maximize used ingredients
-        ignorePantry: false, 
+        ingredients: ingredientsQuery,
+        number: 6,
+        ranking: 1,
+        ignorePantry: false,
         apiKey: API_KEY
       }
     });
 
-    const data = response.data; // Axios automatically parses JSON
+    const data = response.data;
 
-    if (data && data.length > 0) {
-      // Simplify the response to the required fields: title, image, usedIngredients, missedIngredients
-      const simplifiedRecipes = data.map(recipe => ({
-        title: recipe.title,
-        image: recipe.image,
-        usedIngredients: recipe.usedIngredients.map(ing => ing.original),
-        missedIngredients: recipe.missedIngredients.map(ing => ing.original),
-      }));
-      res.json(simplifiedRecipes); // Return the simplified JSON array
-    } else {
-      res.status(404).json({ message: 'No recipes found for the given ingredients.' });
+    if (!data || data.length === 0) {
+      return res.status(404).json({ message: "No recipes found for the given ingredients." });
     }
 
+    // Step 2: Fetch detailed info for each recipe
+    const detailedRecipes = await Promise.all(
+      data.map(async recipe => {
+        try {
+          const detailRes = await axios.get(
+            `https://api.spoonacular.com/recipes/${recipe.id}/information`,
+            { params: { apiKey: API_KEY } }
+          );
+
+          const details = detailRes.data;
+
+          return {
+            id: recipe.id,
+            title: recipe.title,
+            image: recipe.image,
+            instructions: details.instructions || "No instructions available",
+            readyIn: details.readyInMinutes || null,
+            ingredients: details.extendedIngredients.map(ing => ing.original)
+          };
+        } catch (err) {
+          console.error(`Error fetching details for recipe ID ${recipe.id}:`, err.message);
+          return null;
+        }
+      })
+    );
+
+    const filteredRecipes = detailedRecipes.filter(r => r !== null);
+
+    res.json(filteredRecipes);
   } catch (error) {
-    console.error('Error fetching recipes by ingredients from Spoonacular API:', error);
+    console.error("Error fetching recipes by ingredients:", error.message);
     if (error.response) {
-      console.error('Spoonacular API Error Status:', error.response.status);
-      console.error('Spoonacular API Error Data:', error.response.data);
+      console.error("Spoonacular API Error Status:", error.response.status);
+      console.error("Spoonacular API Error Data:", error.response.data);
     }
-    res.status(500).json({ error: 'Failed to fetch recipes by ingredients from external API.' });
+    res.status(500).json({ error: "Failed to fetch recipes by ingredients from external API." });
   }
 });
 
-
-// PostgreSQL connection pool
+// -------------------- POSTGRES FAVORITES --------------------
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
-/* ------------------- FAVORITES ROUTES ------------------- */
-
-// 📌 Get all favorites (from DB)
-router.get('/recipes', async (req, res) => {
+// 📌 Get all favorites
+router.get("/recipes", async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM recipes ORDER BY id ASC");
     res.json(result.rows);
@@ -109,7 +118,7 @@ router.get('/recipes', async (req, res) => {
 });
 
 // 📌 Add recipe to favorites
-router.post('/recipes', async (req, res) => {
+router.post("/recipes", async (req, res) => {
   try {
     const { title, image, instructions, ingredients, readyIn } = req.body;
 
@@ -127,7 +136,7 @@ router.post('/recipes', async (req, res) => {
 });
 
 // 📌 Remove recipe from favorites
-router.delete('/recipes/:id', async (req, res) => {
+router.delete("/recipes/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(
@@ -145,31 +154,5 @@ router.delete('/recipes/:id', async (req, res) => {
   }
 });
 
-// Update recipe by ID
-router.put('/recipes/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { title, instructions, ingredients, image } = req.body;
-
-    const result = await pool.query(
-      `UPDATE recipes 
-       SET title = $1, instructions = $2, ingredients = $3, image = $4 
-       WHERE id = $5 RETURNING *`,
-      [title, instructions, ingredients, image, id]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: "Recipe not found" });
-    }
-
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error("Error updating recipe:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
-
 module.exports = router;
-
-
 

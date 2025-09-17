@@ -13,9 +13,11 @@
 
 <header>
 
-<a href="index.html">🏡Home</a>
-<a href="randomRecipes.html">🥣Random Recipes</a>    
-<a href="favorites.html">⭐Favorites</a>
+  <a href="index.html">🏡 Home</a>
+  <a href="randomRecipes.html">🥣 Random Recipes</a>
+  <a href="favorites.html">⭐ Favorites</a>
+  <a href="login.html">🔑 Login</a>
+  <a href="register.html">📝 Register</a>
 
 
 </header>
@@ -32,7 +34,7 @@
 <div id="search-results"></div>
 
 <script>
- document.getElementById("search-btn").addEventListener("click", async () => {
+document.getElementById("search-btn").addEventListener("click", async () => {
   const ingredients = document.getElementById("ingredients-input").value.trim();
   const resultsDiv = document.getElementById("search-results");
 
@@ -54,11 +56,21 @@
         const card = document.createElement("div");
         card.classList.add("recipe-card");
 
+        // Build recipe card
         card.innerHTML = `
           <h2>${recipe.title}</h2>
           <img src="${recipe.image}" alt="${recipe.title}" style="max-width:200px;">
-          <p><strong>Used Ingredients:</strong> ${recipe.usedIngredients.map(i => i.original || i.name).join(", ")}</p>
-          <p><strong>Missed Ingredients:</strong> ${recipe.missedIngredients.map(i => i.original || i.name).join(", ")}</p>
+          
+          <h4>🕒 Ready in: ${recipe.readyIn ? recipe.readyIn + " mins" : "N/A"}</h4>
+          
+          <h4>📝 Ingredients:</h4>
+          <ul>
+            ${recipe.ingredients.map(ing => `<li>${ing}</li>`).join("")}
+          </ul>
+
+          <h4>📖 Instructions:</h4>
+          <p>${recipe.instructions || "No instructions available"}</p>
+
           <button class="save-btn">⭐ Add to Favorites</button>
           <hr>
         `;
@@ -69,11 +81,8 @@
             title: recipe.title,
             image: recipe.image,
             instructions: recipe.instructions || "No instructions available",
-            ingredients: [
-              ...(recipe.usedIngredients ? recipe.usedIngredients.map(ing => ing.original || ing.name) : []),
-              ...(recipe.missedIngredients ? recipe.missedIngredients.map(ing => ing.original || ing.name) : [])
-            ],
-            readyIn: recipe.readyInMinutes || 30
+            ingredients: recipe.ingredients,
+            readyIn: recipe.readyIn || 30
           };
           addToFavorites(recipeData);
         });
@@ -89,6 +98,7 @@
     resultsDiv.innerHTML = "<p>Failed to fetch recipes.</p>";
   }
 });
+
 
 // Add recipe to favorites (POST to backend → Postgres)
 async function addToFavorites(recipe) {
@@ -108,32 +118,7 @@ async function addToFavorites(recipe) {
     console.error("Error adding to favorites:", err);
   }
 }
-
-  /*// Save recipe to localStorage
-function saveToFavorites(recipe) {
-  let favorites = JSON.parse(localStorage.getItem("favorites")) || [];
-
-  // If recipe has an ID, use it to avoid duplicates
-  if (recipe.id) {
-    if (!favorites.some(r => r.id === recipe.id)) {
-      favorites.push(recipe);
-      localStorage.setItem("favorites", JSON.stringify(favorites));
-      alert("Recipe added to favorites!");
-    } else {
-      alert("Recipe already in favorites!");
-    }
-  } else {
-    // If recipe has no ID, just push (may allow duplicates)
-    favorites.push(recipe);
-    localStorage.setItem("favorites", JSON.stringify(favorites));
-    alert("Recipe added to favorites!");
-  }
-}*/
-
 </script>
-
-
-
 
 
 

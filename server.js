@@ -9,7 +9,7 @@ const app = express();
 
 // Middleware
 app.use(cors());
-app.use(express.json()); 
+app.use(express.json());
 app.use(express.static("public"));
 
 // Routes
@@ -57,15 +57,18 @@ app.get('/api/random-recipe', async (req, res) => {
   }
 });
 
-// Start server
+// Auth routes
+const authRoutes = require("./routes/auth");
+const userRoutes = require("./routes/users");
+
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+
+// ✅ Start server only once
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`App is listening on http://localhost:${PORT}`);
 });
-
-
-
-
 
 
 
